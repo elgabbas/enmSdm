@@ -1,17 +1,15 @@
 #' Calibrate a generalized linear model (GLM)
 #'
-#' This function constructs a GLM piece-by-piece by first calculating AICc for all models with univariate, quadratic, cubic, 2-way-interaction, and linear-by-quadratic terms. It then creates a "full" model with the highest-ranked uni/bivariate terms. Finally, it implements an all-subsets model selection routine using AICc. Its output is a table with AICc for all possible models (resulting from the "full" model) and/or the model of these with the lowest AICc. The procedure uses Firth's penalized likelihood to address issues related to seperability, small sample size, and bias.
+#' This function constructs a GLM piece-by-piece by first calculating AICc for all models with univariate, quadratic, and 2-way-interaction terms. It then creates a "full" model with the highest-ranked uni/bivariate terms. Finally, it implements an all-subsets model selection routine using AICc. Its output is any or all of: a table with AICc for all possible models, all possible models (after model construction), and/or the model with the lowest AICc.
 #' @param data Data frame. Must contain fields with same names as in \code{preds} object.
 #' @param resp Character or integer. Name or column index of response variable. Default is to use the first column in \code{data}.
 #' @param preds Character list or integer list. Names of columns or column indices of predictors. Default is to use the second and subsequent columns in \code{data}.
 #' @param family Name of family for data error structure (see \code{\link[stats]{family}}). Default is to use the 'binomial' family.
 #' @param tooBig Numeric. Used to catch errors when fitting a model fit with the \code{brglmFit} function in the \pkg{brglm2} package. In some cases fitted coefficients are unstable and tend toward very high values, even if training data is standardized. Models with such coefficients will be discarded if any one coefficient is \code{> tooBig}. Set equal to \code{Inf} to keep all models.
-#' @param construct Logical. If TRUE then construct model from individual terms entered in order from lowest to highest AICc up to limits set by \code{presPerTermInitial} or \code{initialTerms} is met. If \code{FALSE} then the "full" model consists of all terms allowed by \code{quadratic}, \code{cubic}, \code{interaction}, and \code{interQuad}.
-#' @param select Logical. If TRUE then calculate AICc for all possible subsets of models and return the model with the lowest AICc of these. This step if performed \emph{after} model construction (if any).
+#' @param construct Logical. If \code{TRUE} (default) then construct model from individual terms entered in order from lowest to highest AICc up to limits set by \code{presPerTermInitial} or \code{initialTerms} is met. If \code{FALSE} then the "full" model consists of all terms allowed by \code{quadratic} and \code{interaction}.
+#' @param select Logical. If \code{TRUE} (default) then calculate AICc for all possible subsets of models and return the model with the lowest AICc of these. This step if performed \emph{after} model construction (if any).
 #' @param quadratic Logical. Used only if \code{construct} is \code{TRUE}. If \code{TRUE} (default) then include quadratic terms in model construction stage for non-factor predictors.
 #' @param interaction Logical. Used only if \code{construct} is \code{TRUE}. If \code{TRUE} (default) then include 2-way interaction terms (including interactions between factor predictors).
-#' @param cubic Logical. Used only if \code{construct} is \code{TRUE}. If \code{TRUE} then include cubic terms in model construction stage for non-factor predictors. Default is \code{FALSE}.
-#' @param interQuad Logical. Used only if \code{construct} is \code{TRUE}. If \code{TRUE} then include all possible interactions of the form 'x * y^2' unless 'y' is a factor. Default is \code{FALSE}.
 #' @param verboten Either \code{NULL} (default) in which case \code{forms} is returned without any manipulation. Alternatively, this is a character list of terms that are not allowed to appear in any model in \code{forms}. Models with these terms are removed from \code{forms}. Note that the order of variables in interaction terms does not matter (e.g., \code{x1:x2} will cause the removal of models with this term verbatim as well as \code{x2:x1}). All possible permutations of three-way interaction terms are treated similarly.
 #' @param verbotenCombos Either \code{NULL} or a list of lists. This argument allows excluding particular combinations of variables using exact matches (i.e., a variable appears exactly as stated) or general matches (i.e., a variable appears in any term). Please see the \emph{Details} section of \code{\link[statisfactory]{makeFormulae}} for more information on how to use this argument. The default is \code{NULL} in which case any combination of variables is allowed.
 #' @param presPerTermInitial Positive integer. Minimum number of presences needed per model term for a term to be included in the model construction stage. Used only is \code{construct} is TRUE.
@@ -19,9 +17,10 @@
 #' @param initialTerms Positive integer. Maximum number of terms to be used in an initial model. Used only if \code{construct} is \code{TRUE}.
 #' @param w Either logical in which case \code{TRUE} causes the total weight of presences to equal the total weight of absences (if \code{family='binomial'}) OR a numeric list of weights, one per row in \code{data} OR the name of the column in \code{data} that contains site weights. The default is to assign equal total weights to presences and contrast sites (\code{TRUE}).
 #' @param method Character, name of function used to solve. This can be \code{'glm.fit'} (default), \code{'brglmFit'} (from the \pkg{brglm2} package), or another function.
-#' @param out Character. Indicates type of value returned. If \code{model} (default) then returns an object of class \code{brglm2}/\code{glm}. If \code{tuning} then just return the AICc table for each kind of model term used in model construction. If both then return a 2-item list with the best model and the AICc table.
-#' @param verbose Logical. If TRUE then display intermediate results on the display device.
+#' @param out Character. Indicates type of value returned. Values can be \code{'model'} (default; return model with lowest AICc), \code{'models'} (return a list of all models), and/or \code{'tuning'} (return a data frame with AICc for each model). If more than one value is specified, then the output will be a list with elements named "model", "models", and/or "tuning". The models will appear in the list in same order as they appear in the tuning table (i.e., model with the lowest AICc first, second-lowest next, etc.). If just one value is specified, the output will be either an object of class \code{MaxEnt}, a list with objects of class \code{MaxEnt}, or a data frame.
+#' @param verbose Logical. If \code{TRUE} then display intermediate results on the display device.
 #' @param ... Arguments to pass to \code{glm}.
+#' @examples
 #' set.seed(123)
 #' x <- matrix(rnorm(n = 6*100), ncol = 6)
 #' # true variables will be #1, #2, #5, and #6, plus
@@ -40,7 +39,7 @@
 #' model <- trainGlmDredge(x, verbose=TRUE)
 #' @seealso \code{\link[enmSdm]{trainGlmDredge}}, \code{\link[stats]{glm}} in the \pkg{stats} package, \code{\link[brglm2]{brglmFit}} in the \pkg{brglm2} package
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' set.seed(123)
 #' x <- matrix(rnorm(n = 6*100), ncol = 6)
 #' # true variables will be #1, #2, #5, and #6, plus
@@ -69,8 +68,6 @@ trainGlm <- function(
 	select = TRUE,
 	quadratic = TRUE,
 	interaction = TRUE,
-	cubic = FALSE,
-	interQuad = FALSE,
 	verboten = NULL,
 	verbotenCombos = NULL,
 	presPerTermInitial = 10,
@@ -117,9 +114,8 @@ trainGlm <- function(
 
 	w <<- w / max(w) # declare to global because dredge() has problems if it is not
 
-	################################
-	## initial model construction ##
-	################################
+	## MODEL CONSTRUCTION
+	#####################
 
 	# create starting formula
 	form <- paste0(resp, ' ~ 1')
@@ -130,6 +126,7 @@ trainGlm <- function(
 		for (thisPred in preds) { # for each predictor test single-variable terms
 
 			# train model
+			# thisModel <- glm(formula=as.formula(paste0(form, ' + ', thisPred)), family=family, data=data, weights=w, method=method)
 			thisModel <- glm(formula=as.formula(paste0(form, ' + ', thisPred)), family=family, data=data, weights=w, method=method, ...)
 
 			# get AICc
@@ -164,6 +161,7 @@ trainGlm <- function(
 					term <- paste0(thisPred, ' + I(', thisPred, '^2)')
 
 					# train model
+					# thisModel <- glm(formula=as.formula(paste0(form, ' + ', term)), family=family, data=data, weights=w, method=method)
 					thisModel <- glm(formula=as.formula(paste0(form, ' + ', term)), family=family, data=data, weights=w, method=method, ...)
 
 					# get AICc
@@ -185,38 +183,38 @@ trainGlm <- function(
 
 		} # if there are more than desired number of presences per term and initial model can have more than 1 term
 
-		## CUBIC TERMS
-		# if there are more than desired number of presences per term and initial model can have more than 1 term
+		# ## CUBIC TERMS
+		# # if there are more than desired number of presences per term and initial model can have more than 1 term
 
-		if (cubic && ((sampleSize / 3 >= presPerTermInitial & initialTerms >= 3) | (sampleSize / 3 >= presPerTermInitial & initialTerms >= 3))) {
+		# if (cubic && ((sampleSize / 3 >= presPerTermInitial & initialTerms >= 3) | (sampleSize / 3 >= presPerTermInitial & initialTerms >= 3))) {
 
-			for (thisPred in preds) { # for each predictor test cubic terms
+			# for (thisPred in preds) { # for each predictor test cubic terms
 
-				if (class(data[ , thisPred]) != 'factor') {
+				# if (class(data[ , thisPred]) != 'factor') {
 
-					term <- paste0(thisPred, ' + I(', thisPred, '^2) + I(', thisPred, '^3)')
+					# term <- paste0(thisPred, ' + I(', thisPred, '^2) + I(', thisPred, '^3)')
 
-					# train model
-					thisModel <- glm(formula=as.formula(paste0(form, ' + ', term)), family=family, data=data, weights=w, method=method, ...)
+					# # train model
+					# thisModel <- glm(formula=as.formula(paste0(form, ' + ', term)), family=family, data=data, weights=w, method=method, ...)
 
-					# get AICc
-					thisAic <- AIC(thisModel)
-					k <- length(thisModel$coefficients)
+					# # get AICc
+					# thisAic <- AIC(thisModel)
+					# k <- length(thisModel$coefficients)
 
-					thisAic <- thisAic + (2 * k * (k + 1)) / (sampleSize - k - 1)
+					# thisAic <- thisAic + (2 * k * (k + 1)) / (sampleSize - k - 1)
 
-					# remember if coefficients were stable
-					if (all(!is.na(coef(thisModel)))) {
-						if (all(abs(coef(thisModel)) < tooBig)) {
-							tuning <- rbind(tuning, data.frame(type='cubic', term=term, AICc=thisAic, terms=3))
-						}
-					}
+					# # remember if coefficients were stable
+					# if (all(!is.na(coef(thisModel)))) {
+						# if (all(abs(coef(thisModel)) < tooBig)) {
+							# tuning <- rbind(tuning, data.frame(type='cubic', term=term, AICc=thisAic, terms=3))
+						# }
+					# }
 
-				}
+				# }
 
-			} # next cubic term
+			# } # next cubic term
 
-		} # if there are more than desired number of presences per term and initial model can have more than 1 term
+		# } # if there are more than desired number of presences per term and initial model can have more than 1 term
 
 		## 2-WAY INTERACTION TERMS
 		# if there are more than desired number of presences per term and initial model can have more than 1 term
@@ -232,6 +230,7 @@ trainGlm <- function(
 					term <- paste0(thisPred, ' + ', thatPred, ' + ', thisPred, ':', thatPred)
 
 					# train model
+					# thisModel <- glm(formula=as.formula(paste0(form, ' + ', term)), family=family, data=data, weights=w, method=method)
 					thisModel <- glm(formula=as.formula(paste0(form, ' + ', term)), family=family, data=data, weights=w, method=method, ...)
 
 					# get AICc
@@ -253,45 +252,45 @@ trainGlm <- function(
 
 		} # if there are more than desired number of presences per term and initial model can have more than 1 term
 
-		## INTERACTION-QUADRATIC terms
-		# if there are more than desired number of presences per term and initial model can have more than 1 term
-		if (interQuad && ((sampleSize / 5 >= presPerTermInitial & initialTerms >= 5) | (sampleSize / 5 >= presPerTermInitial & initialTerms >= 5))) {
+		# ## INTERACTION-QUADRATIC terms
+		# # if there are more than desired number of presences per term and initial model can have more than 1 term
+		# if (interQuad && ((sampleSize / 5 >= presPerTermInitial & initialTerms >= 5) | (sampleSize / 5 >= presPerTermInitial & initialTerms >= 5))) {
 
-			for (thisPred in preds) { # for each predictor
+			# for (thisPred in preds) { # for each predictor
 
-				for (thatPred in preds[!(preds %in% thisPred)]) { # for each second predictor
+				# for (thatPred in preds[!(preds %in% thisPred)]) { # for each second predictor
 
-					term <- if (class(data[ , thatPred]) != 'factor') {
+					# term <- if (class(data[ , thatPred]) != 'factor') {
 
-						paste0(thisPred, ' + ', thatPred, ' + I(', thatPred, '^2) + ', thisPred, ':', thatPred, ' + ', thisPred, ':I(', thatPred, '^2)')
+						# paste0(thisPred, ' + ', thatPred, ' + I(', thatPred, '^2) + ', thisPred, ':', thatPred, ' + ', thisPred, ':I(', thatPred, '^2)')
 
-					} else { NA }
+					# } else { NA }
 
-					if (!is.na(term)) {
+					# if (!is.na(term)) {
 
-						# train model
-						thisModel <- glm(formula=as.formula(paste0(form, ' + ', term)), family=family, data=data, weights=w, method=method, ...)
+						# # train model
+						# thisModel <- glm(formula=as.formula(paste0(form, ' + ', term)), family=family, data=data, weights=w, method=method, ...)
 
-						# get AICc
-						thisAic <- AIC(thisModel)
-						k <- length(thisModel$coefficients)
+						# # get AICc
+						# thisAic <- AIC(thisModel)
+						# k <- length(thisModel$coefficients)
 
-						thisAic <- thisAic + (2 * k * (k + 1)) / (sampleSize - k - 1)
+						# thisAic <- thisAic + (2 * k * (k + 1)) / (sampleSize - k - 1)
 
-						# remember if coefficients were stable
-						if (all(!is.na(coef(thisModel)))) {
-							if (all(abs(coef(thisModel)) < tooBig)) {
-								tuning <- rbind(tuning, data.frame(type='interaction-quadratic', term=term, AICc=thisAic, terms=4))
-							}
-						}
+						# # remember if coefficients were stable
+						# if (all(!is.na(coef(thisModel)))) {
+							# if (all(abs(coef(thisModel)) < tooBig)) {
+								# tuning <- rbind(tuning, data.frame(type='interaction-quadratic', term=term, AICc=thisAic, terms=4))
+							# }
+						# }
 
-					}
+					# }
 
-				} # for each second predictor test interaction terms
+				# } # for each second predictor test interaction terms
 
-			} # for each predictor test interaction terms
+			# } # for each predictor test interaction terms
 
-		} # if there are more than desired number of presences per term and initial model can have more than 1 term
+		# } # if there are more than desired number of presences per term and initial model can have more than 1 term
 
 		# sort by AIC
 		tuning <- tuning[order(tuning$AIC, tuning$terms), ]
@@ -343,7 +342,7 @@ trainGlm <- function(
 		# univariate terms
 		for (thisPred in preds) form <- paste0( form, ' + ', thisPred)
 		if (quadratic) for (thisPred in preds) form <- paste0( form, ' + I(', thisPred, '^2)')
-		if (cubic) for (thisPred in preds) form <- paste0( form, ' + I(', thisPred, '^3)')
+		# if (cubic) for (thisPred in preds) form <- paste0( form, ' + I(', thisPred, '^3)')
 
 		# interactions
 		if (length(preds) > 1) {
@@ -357,18 +356,18 @@ trainGlm <- function(
 				}
 			}
 
-			# INTERACTION with QUADRATIC
-			if (interQuad) {
-				for (thisPred in preds) {
-					for (thatPred in preds[!(preds %in% thisPred)]) {
-						if (class(data[ , thatPred]) != 'factor') {
-							if (!quadratic) form <- paste0(form, ' + I(', thatPred, '^2)')
-							if (!interaction) form <- paste0(form, ' + ', thisPred, ':', thatPred)
-							form <- paste0(form, ' + ', thisPred , ':I(', thatPred, '^2)')
-						}
-					}
-				}
-			}
+			# # INTERACTION with QUADRATIC
+			# if (interQuad) {
+				# for (thisPred in preds) {
+					# for (thatPred in preds[!(preds %in% thisPred)]) {
+						# if (class(data[ , thatPred]) != 'factor') {
+							# if (!quadratic) form <- paste0(form, ' + I(', thatPred, '^2)')
+							# if (!interaction) form <- paste0(form, ' + ', thisPred, ':', thatPred)
+							# form <- paste0(form, ' + ', thisPred , ':I(', thatPred, '^2)')
+						# }
+					# }
+				# }
+			# }
 
 		}
 
@@ -377,9 +376,8 @@ trainGlm <- function(
 	# convert to formula
 	form <- as.formula(form)
 
-	########################################################################################
-	## if doing model construction, evaluate all possible models using AICc then get best ##
-	########################################################################################
+	## MODEL SELECTION
+	##################
 
 	if (!select) {
 
@@ -391,28 +389,45 @@ trainGlm <- function(
 			print(summary(model))
 			flush.console()
 		}
-		
+
 	} else {
 
+		# store *all* models
+		models <- list()
+
+		# maximum number of terms to accommodate in any model
 		maxTerms <- if (family == 'binomial') {
 			max(1, 1 + floor(sampleSize / presPerTermFinal))
 		} else {
 			Inf
 		}
 
-		forms <- statisfactory::makeFormulae(form, maxTerms=maxTerms, intercept=TRUE, interceptOnly=TRUE, linearOnly=TRUE, quad=FALSE, ia=FALSE, verboten=verboten, verbotenCombos=verbotenCombos, returnFx=as.character)
-		
+		# make all possible formula
+		forms <- statisfactory::makeFormulae(
+			form,
+			maxTerms=maxTerms,
+			intercept=TRUE,
+			interceptOnly=TRUE,
+			linearOnly=TRUE,
+			quad=quadratic,
+			ia=interaction,
+			verboten=verboten,
+			verbotenCombos=verbotenCombos,
+			returnFx=as.character
+		)
+
 		tuning <- data.frame()
-		
+
 		# evaluate each model
 		for (i in seq_along(forms)) {
-		
+
 			form <- as.formula(forms[[i]])
-			
-			model <- glm(form, family=family, data=data, weights=w, method=method, ...)
-			ll <- logLik(model)
-			aicc <- MuMIn::AICc(model)
-			
+
+			models[[i]] <- glm(form, family=family, data=data, weights=w, method=method, ...)
+			ll <- logLik(models[[i]])
+			aicc <- MuMIn::AICc(models[[i]])
+			models[[i]]$aicc <- aicc
+
 			tuning <- rbind(
 				tuning,
 				data.frame(
@@ -421,24 +436,23 @@ trainGlm <- function(
 					aicc = aicc
 				)
 			)
-			
+
+
 		}
 
+		models <- rlist::list.sort(models, aicc)
 		tuning <- tuning[order(tuning$aicc), ]
-		
+
 		if (verbose) {
 			omnibus::say('')
 			print(tuning)
 			omnibus::say('')
 		}
 
-		# retrain best model
+		# get best model
 		if ('model' %in% out) {
 
-			form <- tuning$model[1]
-			form <- as.formula(form)
-			
-			model <- glm(form, family=family, data=data, weights=w, method=method, ...)
+			model <- models[[1]]
 
 			if (verbose) {
 				omnibus::say('Final model:', pre=1);
@@ -448,18 +462,21 @@ trainGlm <- function(
 
 		}
 
-	} # if want model construction
+	} # model selection
 
 	# return
-	if ('model' %in% out & 'tuning' %in% out) {
-		out <- list()
-		out$tuning <- tuning
-		out$model <- model
-		out
+	if (length(out) > 1) {
+		output <- list()
+		if ('models' %in% out & select) output$models <- models
+		if ('model' %in% out) output$model <- model
+		if ('tuning' %in% out) output$tuning <- tuning
+		output
+	} else if ('models' %in% out) {
+		models
+	} else if ('model' %in% out) {
+		model
 	} else if ('tuning' %in% out) {
 		tuning
-	} else {
-		model
 	}
 
 }

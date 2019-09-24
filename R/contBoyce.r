@@ -1,32 +1,35 @@
-#' Calculate the Continuous Boyce Index (CBI) with weighting
+#' Continuous Boyce Index (CBI) with weighting
 #'
 #' This function calculates the Continuous Boyce Index (CBI), a measure of model accuracy for presence-only test data.
-#' @param pres Numeric list. Predicted values at test presences
-#' @param bg Numeric list.  Predicted values at background sites.
+#' @param pres Numeric vector. Predicted values at presence sites.
+#' @param contrast Numeric vector. Predicted values at absence/background sites.
 #' @param numBins Positive integer. Number of (overlapping) bins into which to divide predictions.
 #' @param binWidth Positive numeric. Size of a bin. Each bin will be \code{binWidth * (max - min)} where \code{max} and \code{min}. If \code{autoWindow} is \code{FALSE} (the default) then \code{min} is 0 and \code{max} is 1. If \code{autoWindow} is \code{TRUE} then \code{min} and \code{max} are the maximum and minimum value of all predictions in the background and presence sets (i.e., not necessarily 0 and 1).
-#' @param presWeight Numeric vector same length as \code{pres}. Relative weights of presence sites.
-#' @param bgWeight Numeric vector same length as \code{bg}. Relative weights of background sites.
-#' @param autoWindow Logical. If \code{FALSE} calculate bin boundaries starting at 0 and ending at 1 (default). If \code{TRUE} then calculate bin boundaries starting at minimum predicted value and ending at maximum predicted value.
+#' @param presWeight Numeric vector same length as \code{pres}. Relative weights of presence sites. The default is to assign each presence a weight of 1.
+#' @param contrastWeight Numeric vector same length as \code{contrast}. Relative weights of background sites. The default is to assign each presence a weight of 1.
+#' @param autoWindow Logical. If \code{FALSE} calculate bin boundaries starting at 0 and ending at 1 + epsilon (where epsilon is a very small number to assure inclusion of cases that equal 1 exactly). If \code{TRUE} (default) then calculate bin boundaries starting at minimum predicted value and ending at maximum predicted value.
 #' @param method Character. Type of correlation to calculate. The default is \code{'spearman'}, the Spearman rank correlation coefficient used by Boyce et al. (2002) and Hirzel et al. (2006), which is the traditional CBI. In contrast, \code{'pearson'} or \code{'kendall'} can be used instead.  See [stats::cor()] for more details.
 #' @param dropZeros Logical. If TRUE then drop all bins in which the frequency of presences is 0.
 #' @param graph Logical. If TRUE then plot P vs E and P/E versus bin.
 #' @param na.rm Logical. If \code{TRUE} then remove any presences and associated weights and background predictions and associated weights with \code{NA}s.
+#' @param bg Same as \code{contrast}. Included for backwards compatibility. Ignored if \code{contrast} is not \code{NULL}.
+#' @param bgWeight Same as \code{contrastWeight}. Included for backwards compatibility. Ignored if \code{contrastWeight} is not \code{NULL}.
+#' @param ... Other arguments (not used).
 #' @return Numeric value.
-#' @details The CBI is the Spearman rank correlation coefficient between the proportion of sites in each prediction class and the expected proportion of predictions in each prediction class based on the proportion of the landscape that is in that class. Values >0 indicate the model's output is positively correlated with the true probability of presence.  Values <0 indicate it is negatively correlated with the true probabilty of presence.
+#' @details CBI is the Spearman rank correlation coefficient between the proportion of sites in each prediction class and the expected proportion of predictions in each prediction class based on the proportion of the landscape that is in that class. Values >0 indicate the model's output is positively correlated with the true probability of presence.  Values <0 indicate it is negatively correlated with the true probability of presence.
 #' @references Boyce, M.S., Vernier, P.R., Nielsen, S.E., and Schmiegelow, F.K.A.  2002.  Evaluating resource selection functions.  \emph{Ecological Modeling} 157:281-300)
 #' @references Hirzel, A.H., Le Lay, G., Helfer, V., Randon, C., and Guisan, A.  2006.  Evaluating the ability of habitat suitability models to predict species presences.  \emph{Ecological Modeling} 199:142-152.
-#' @seealso \code{\link[stats]{cor}}, \code{\link{Fpb}}, \code{\link{aucWeighted}}, \code{link[enmSdm]{contBoyce2x}}
+#' @seealso \code{\link[stats]{cor}}, \code{\link{fpb}}, \code{\link{aucWeighted}}, \code{link[enmSdm]{contBoyce2x}}
 #' @examples
 #' set.seed(123)
 #' pres <- sqrt(runif(100))
-#' bg <- runif(1000)
-#' contBoyce(pres, bg)
-#' contBoyce2x(pres, bg)
-#' presWeight <- c(rep(1, 10), rep(0.5, 40))
-#' contBoyce(pres, bg, presWeight=presWeight)
-#' contBoyce2x(pres, bg, presWeight=presWeight)
-#' \dontrun{
+#' contrast <- runif(1000)
+#' contBoyce(pres, contrast)
+#' contBoyce2x(pres, contrast)
+#' presWeight <- c(rep(1, 10), rep(0.5, 90))
+#' contBoyce(pres, contrast, presWeight=presWeight)
+#' contBoyce2x(pres, contrast, presWeight=presWeight)
+#' \donttest{
 #' # compare stability of CBI calculated with ecospat.boyce() in ecospat package
 #' library(ecospat)
 #' set.seed(123)
@@ -35,10 +38,10 @@
 #' 	for (i in 1:30) {
 #'
 #'    pres <- runif(100)^(1 / perform)
-#'    bg <- runif(1000)
+#'    contrast <- runif(1000)
 #'
-#'    cbi_enmSdm <- contBoyce(pres, bg)
-#'    cbi_ecospat <- ecospat.boyce(bg, pres, PEplot=FALSE)$Spearman.cor
+#'    cbi_enmSdm <- contBoyce(pres, contrast)
+#'    cbi_ecospat <- ecospat.boyce(contrast, pres, PEplot=FALSE)$Spearman.cor
 #'
 #'    results <- rbind(
 #'      results,
@@ -69,7 +72,7 @@
 #' )
 #' plot(results$cbi,
 #' 	pch=rep(c(21, 22, 23, 24), each=2),
-#' 	bg=ifelse(results$method == 'ecospat', 'darkred', 'cornflowerblue'),
+#' 	contrast=ifelse(results$method == 'ecospat', 'darkred', 'cornflowerblue'),
 #' 	main='Pairs of CBIs',
 #' 	ylab='CBI'
 #' )
@@ -79,37 +82,47 @@
 
 contBoyce <- function(
 	pres,
-	bg,
+	contrast,
 	numBins = 101,
 	binWidth = 0.1,
 	presWeight = rep(1, length(pres)),
-	bgWeight = rep(1, length(bg)),
+	contrastWeight = rep(1, length(contrast)),
 	autoWindow = TRUE,
 	method = 'spearman',
 	dropZeros = TRUE,
 	graph = FALSE,
-	na.rm = FALSE
+	na.rm = FALSE,
+	bg = NULL,
+	bgWeight = NULL,
+	...
 ) {
 
+	if (missing(contrast) & !is.null(bg)) contrast <- bg
+	if (missing(contrastWeight) & !is.null(bgWeight)) contrastWeight <- bgWeight
+
 	# if all NAs
-	if (all(is.na(pres)) | all(is.na(bg))) return(NA)
+	if (all(is.na(pres)) | all(is.na(contrast)) | all(is.na(presWeight)) | all(is.na(contrastWeight))) return(NA)
 
-	# remove NAs
-	if (na.rm) {
+	# catch errors
+	if (length(presWeight) != length(pres)) stop('You must have the same number of presence predictions and presence weights ("pres" and "presWeight").')
+	if (length(contrastWeight) != length(contrast)) stop('You must have the same number of absence/background predictions and absence/background weights ("contrast" and "contrastWeight").')
+	
+	# # remove NAs
+	# if (na.rm) {
 
-		cleanedPres <- omnibus::naOmitMulti(pres, presWeight)
-		pres <- cleanedPres[[1]]
-		presWeight <- cleanedPres[[2]]
+		# cleanedPres <- omnibus::naOmitMulti(pres, presWeight)
+		# pres <- cleanedPres[[1]]
+		# presWeight <- cleanedPres[[2]]
 
-		cleanedBg <- omnibus::naOmitMulti(bg, bgWeight)
-		bg <- cleanedBg[[1]]
-		bgWeight <- cleanedBg[[2]]
+		# cleanedContrast <- omnibus::naOmitMulti(contrast, contrastWeight)
+		# contrast <- cleanedContrast[[1]]
+		# contrastWeight <- cleanedContrast[[2]]
 
-	}
+	# }
 	
 	# right hand side of each class (assumes max value is >0)
-	lowest <- if (autoWindow) { min(c(pres, bg), na.rm=T) } else { 0 }
-	highest <- if (autoWindow) { max(c(pres, bg), na.rm=T) + omnibus::eps() } else { 1 + omnibus::eps() }
+	lowest <- if (autoWindow) { min(c(pres, contrast), na.rm=na.rm) } else { 0 }
+	highest <- if (autoWindow) { max(c(pres, contrast), na.rm=na.rm) + omnibus::eps() } else { 1 + omnibus::eps() }
 
 	windowWidth <- binWidth * (highest - lowest)
 
@@ -121,7 +134,7 @@ contBoyce <- function(
 	##########
 
 	## initiate variables to store predicted/expected (P/E) values
-	freqPres <- freqBg <- rep(NA, length(numBins))
+	freqPres <- freqContrast <- rep(NA, length(numBins))
 
 	### tally proportion of test presences/background sites in each class
 	for (countClass in 1:numBins) {
@@ -129,12 +142,12 @@ contBoyce <- function(
 		# number of presence predictions in this class
 		presInBin <- pres >= lows[countClass] & pres < highs[countClass]
 		presInBin <- presInBin * presWeight
-		freqPres[countClass] <- sum(presInBin)
+		freqPres[countClass] <- sum(presInBin, na.rm=na.rm)
 
 		# number of background predictions in this class
-		bgInBin <- bg >= lows[countClass] & bg < highs[countClass]
-		bgInBin <- bgInBin * bgWeight
-		freqBg[countClass] <- sum(bgInBin)
+		bgInBin <- contrast >= lows[countClass] & contrast < highs[countClass]
+		bgInBin <- bgInBin * contrastWeight
+		freqContrast[countClass] <- sum(bgInBin, na.rm=na.rm)
 
 	} # next predicted value class
 
@@ -142,29 +155,29 @@ contBoyce <- function(
 	meanPred <- rowMeans(cbind(lows, highs))
 
 	# add small number to each bin that has 0 background frequency but does have a presence frequency > 0
-	if (any(freqPres > 0 & freqBg == 0)) {
-		smallValue <- min(0.5 * c(presWeight[presWeight > 0], bgWeight[bgWeight > 0]))
-		freqBg[freqPres > 0 & freqBg == 0] <- smallValue
+	if (any(freqPres > 0 & freqContrast == 0)) {
+		smallValue <- min(0.5 * c(presWeight[presWeight > 0], contrastWeight[contrastWeight > 0]))
+		freqContrast[freqPres > 0 & freqContrast == 0] <- smallValue
 	}
 
 	# remove classes with 0 presence frequency
 	if (dropZeros && 0 %in% freqPres) {
-		zeros <- which(freqPres %in% 0)
+		zeros <- which(freqPres == 0)
 		meanPred[zeros] <- NA
 		freqPres[zeros] <- NA
-		freqBg[zeros] <- NA
+		freqContrast[zeros] <- NA
 	}
 
 	# remove classes with 0 background frequency
-	if (any(0 %in% freqBg)) {
-		zeros <- which(freqBg %in% 0)
+	if (any(0 %in% freqContrast)) {
+		zeros <- which(freqContrast == 0)
 		meanPred[zeros] <- NA
 		freqPres[zeros] <- NA
-		freqBg[zeros] <- NA
+		freqContrast[zeros] <- NA
 	}
 
 	P <- freqPres / sum(presWeight, na.rm=TRUE)
-	E <- freqBg / sum(bgWeight, na.rm=TRUE)
+	E <- freqContrast / sum(contrastWeight, na.rm=TRUE)
 	PE <- P / E
 
 	# plot
@@ -184,11 +197,6 @@ contBoyce <- function(
 
 	# calculate continuous Boyce index (cbi)
 	cbi <- stats::cor(x=meanPred, y=PE, method=method)
-
-	#####################
-	## post-processing ##
-	#####################
-
 	cbi
 
 }

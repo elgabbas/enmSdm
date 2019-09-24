@@ -12,7 +12,7 @@
 #' @param verbose Logical, if \code{FALSE} (default) show no progress indicator. If \code{TRUE} then display updates and graph.
 #' @param ... Arguments to pass to \code{distGeo} or \code{\link[enmSdm]{sampleRast}}. Note that if \code{x} is a matrix or data frame a coordinate reference system may be passed using \code{crs = <proj4 string code>} or \code{crs = <object of class CRS>} (see \pkg{sp} package). Otherwise the coordinates are assumed to be unprojected (WGS84).
 #' @return A list with two elements, each representing object of the same classes as \code{x1} and \code{x2} but with coordinates randomized.
-#' @seealso \code{\link[enmSdm]{sampleRast}}, \code{\link[enmSdm]{randPointsRespectingSelf}}, \code{\link[enmSdm]{randPointsRespectingSelfOther1}}
+#' @seealso \code{\link[enmSdm]{randPointsRespectingSelf}}, \code{\link[enmSdm]{randPointsRespectingSelfOther1}}, \code{\link[enmSdm]{randPointsBatch}}, \code{\link[enmSdm]{randPointsBatchSampled}}, \code{\link[enmSdm]{randPointsBatchExtract}}, \code{\link[enmSdm]{randPointsBatchNicheOverlap}}
 #' @examples
 #' library(dismo)
 #' library(raster)
@@ -95,7 +95,7 @@
 #' 	pt.bg=c('cornflowerblue', 'cornflowerblue', NA, NA))
 #' 
 #' ### batch mode
-#' \dontrun{
+#' \donttest{
 #' 
 #' # download climate data
 #' clim <- raster::getData('worldclim', var='bio', res=2.5)

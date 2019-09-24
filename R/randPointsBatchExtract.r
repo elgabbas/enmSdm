@@ -5,7 +5,7 @@
 #' @param rast A raster, raster stack, or raster brick from which to extract data.
 #' @param verbose Logical, if \code{TRUE} display progress.
 #' @return A list.
-#' @seealso \code{\link[enmSdm]{randPointsMaster}}, \code{\link[enmSdm]{randPointsSampled}}
+#' @seealso \code{\link[enmSdm]{randPointsRespectingSelf}}, \code{\link[enmSdm]{randPointsRespectingSelfOther1}}, \code{\link[enmSdm]{randPointsRespectingSelfOther2}}, \code{\link[enmSdm]{randPointsBatch}}, \code{\link[enmSdm]{randPointsBatchSampled}}, \code{\link[enmSdm]{randPointsBatchNicheOverlap}}
 #' @examples
 #' library(dismo)
 #' library(raster)
@@ -88,7 +88,7 @@
 #' 	pt.bg=c('cornflowerblue', 'cornflowerblue', NA, NA))
 #' 
 #' ### batch mode
-#' \dontrun{
+#' \donttest{
 #' 
 #' # download climate data
 #' clim <- raster::getData('worldclim', var='bio', res=2.5)

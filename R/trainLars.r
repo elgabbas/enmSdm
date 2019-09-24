@@ -17,7 +17,7 @@
 #' @details If \code{scale} is \code{TRUE} then predictors with zero variance will be removed from the data before the model is trained.
 #' @seealso \code{\link{makeLarsData}}, \code{\link{predictLars}}, \code{\link[grpreg]{grpreg}}, \code{\link[grpregOverlap]{grpregOverlap}}, \code{\link[grpregOverlap]{cv.grpregOverlap}}
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' set.seed(123)
 #' X <- matrix(rnorm(n = 6*100), ncol = 6)
 #' # true variables will be #1, #2, #5, and #6, plus
@@ -86,6 +86,7 @@
 #' par(mfrow=c(1, 1))
 #' pred3x1x2 <- predictLars(fit3, XX, type='response', preds=c('x1', 'x2'))
 #' plot(pred3, pred3x1x2, xlim=c(0, 1), ylim=c(0, 1))
+#' }
 #' @export
 
 trainLars <- function(

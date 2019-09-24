@@ -23,9 +23,9 @@ trainGam(data, resp = names(data)[1],
 
 \item{construct}{Logical. If TRUE then construct model by computing AICc for all univariate and bivariate models. Then add terms up to maximum set by \code{presPerTermInitial} and \code{initialTerms}.}
 
-\item{select}{Logical. If TRUE then calculate AICc for all possible subsets of models and return the model with the lowest AICc of these. This step if performed **after** model construction (if any).}
+\item{select}{Logical. If TRUE then calculate AICc for all possible subsets of models and return the model with the lowest AICc of these. This step if performed \emph{after} model construction (if any).}
 
-\item{presPerTermInitial}{Positive integer. Minimum number of presences needed per model term for a term to be included in the model construction stage. Used only is \code{construct} is TRUE.}
+\item{presPerTermInitial}{Positive integer. Minimum number of presences needed per model term for a term to be included in the model construction stage. Used only if \code{construct} is \code{TRUE}.}
 
 \item{presPerTermFinal}{Positive integer. Minimum number of presence sites per term in initial starting model; used only if \code{select} is TRUE.}
 
@@ -48,7 +48,7 @@ If \code{out = 'model'} this function returns an object of class \code{gam}. If 
 This function constructs a GAM piece-by-piece by first calculating AICc for all models with univariate and bivariate (interaction) terms. It then creates a "full" model with the highest-ranked uni/bivariate terms then implements an all-subsets model selection routine.
 }
 \examples{
-\dontrun{
+\donttest{
 set.seed(123)
 x <- matrix(rnorm(n = 6*100), ncol = 6)
 # true variables will be #1, #2, #5, and #6, plus

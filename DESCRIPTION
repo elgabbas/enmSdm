@@ -1,17 +1,21 @@
 Package: enmSdm
 Type: Package
 Title: Tools for modeling niches and distributions of species
-Version: 0.3.4.1
-Date: 2018-11-27
+Version: 0.3.9.7
+Date: 2019-09-18
 Author: Adam B. Smith <adam.smith@mobot.org>
 Maintainer: Adam B. Smith <adam.smith@mobot.org>
-Description: This package contains tools for modeling the distributions and niches of species or species-like entities. Its main features are a set of functions named \code{train~~~} which automatically calibrate models using AICc, cross-validated deviance, or other metrics (depending on the algorithm).
+Description: Better modeling of niches and distributions.
+Remotes:
+	adamlilith/omnibus,
+	adamlilith/statisfactory
 Depends:
 Imports:
 	boot,
 	cluster,
 	dismo,
 	geosphere,
+	gbm,
 	grpreg,
 	grpregOverlap,
 	MASS,
@@ -25,19 +29,21 @@ Imports:
 	raster,
 	rgdal,
 	rgeos,
+	rlist,
 	scales,
 	sp,
 	splines,
-	stats,
-	statisfactory
+	statisfactory,
+	stats
 Suggests:
 	brglm2,
 	devtools,
     knitr,
     rmarkdown
-License: GPL (>=3)
+License: GPL (>=3) + file LICENSE
 LazyData: false
 LazyLoad: yes
 URL: http://www.earthSkySea.org
 Encoding: UTF-8
-RoxygenNote: 6.1.0
+RoxygenNote: 6.1.1
+VignetteBuilder: knitr

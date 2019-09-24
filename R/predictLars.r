@@ -12,7 +12,7 @@
 #' @examples
 #' # linear regression, a simulation demo
 #' (from grpregOverlap() function in the grpregOverlap package)
-#' \dontrun{
+#' \donttest{
 #' set.seed(123)
 #' X <- matrix(rnorm(n = 6*100), ncol = 6)
 #' # true variables will be #1, #2, #5, and #6, plus
@@ -81,6 +81,7 @@
 #' par(mfrow=c(1, 1))
 #' pred3x1x2 <- predictLars(fit3, XX, type='response', preds=c('x1', 'x2'))
 #' plot(pred3, pred3x1x2, xlim=c(0, 1), ylim=c(0, 1))
+#' }
 #' @export
 
 predictLars <- function(
@@ -165,7 +166,7 @@ predictLars <- function(
 		out <- as.numeric(newdata %*% betas)
 	}
 
-	if (!is.null(out) && type == 'response' && object$fit$family == 'binomial') out <- omnibus::probitAdj(out, 0)
+	if (!is.null(out) && type == 'response' && object$fit$family == 'binomial') out <- statisfactory::probitAdj(out, 0)
 
 	out
 

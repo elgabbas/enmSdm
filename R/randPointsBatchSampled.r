@@ -2,7 +2,7 @@
 #'
 #' This function is called using a list object typically generated using the \code{\link[enmSdm]{randPontsMaster}} function. It returns a \code{SpatialPoints} object that represents all of the randomized points from all of the iterations. These can be used as the "available environment" in a niche overlap test.
 #' @return A \code{\link[sp]{SpatialPoints}} object.
-#' @seealso \code{\link[enmSdm]{sampleRast}}, \code{\link[enmSdm]{randPointsMaster}}, \code{\link[enmSdm]{randPointsRespectingSelf}}, \code{\link[enmSdm]{randPointsRespectingSelfOther1}}, \code{\link[enmSdm]{randPointsRespectingSelfOther2}}
+#' @seealso \code{\link[enmSdm]{randPointsRespectingSelf}}, \code{\link[enmSdm]{randPointsRespectingSelfOther1}}, \code{\link[enmSdm]{randPointsRespectingSelfOther2}}, \code{\link[enmSdm]{randPointsBatch}}, \code{\link[enmSdm]{randPointsBatchExtract}}, \code{\link[enmSdm]{randPointsBatchNicheOverlap}}
 #' @examples
 #' library(dismo)
 #' library(raster)
@@ -85,7 +85,7 @@
 #' 	pt.bg=c('cornflowerblue', 'cornflowerblue', NA, NA))
 #' 
 #' ### batch mode
-#' \dontrun{
+#' \donttest{
 #' 
 #' # download climate data
 #' clim <- raster::getData('worldclim', var='bio', res=2.5)
